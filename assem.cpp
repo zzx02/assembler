@@ -47,8 +47,15 @@ string Handle_Instruction_R(string instruction)
 	switch(opt)
 	{
 		case("add"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100000";break;
+		case("addu"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100001";break;
 		case("sub"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100010";break;
+		case("subu"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100011";break;
+		case("slt"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "101010";break;
+		case("sltu"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "101011";break;
 		case("and"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100100";break;
+		case("or"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100101";break;
+		case("xor"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100110";break;
+		case("nor"): code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100111";break;
 	}	
 }
 int getmacro(string &s)
