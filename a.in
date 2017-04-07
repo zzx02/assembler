@@ -1,0 +1,4 @@
+#baseAddr 0001
+start: add $zero, $zero, $zero;
+j start;
+add $zero, $zero, $zero;
