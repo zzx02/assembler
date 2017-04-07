@@ -101,6 +101,7 @@ int main(int argc, char** argv)
     if ((type = gettype(buffer)) == EMPTY_type) continue;
     cout << pc << endl;
     pc += 4;
+    cout << "Okay" << endl;
   }
   cout << Labels["start"];
 }
