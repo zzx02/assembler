@@ -5,6 +5,8 @@
 #include <bitset>
 #include <map>
 #include <sstream>
+#include <cstdio>
+
 #define Instruction_type int
 
 #define EMPTY_type 0x00
@@ -14,6 +16,7 @@
 
 using namespace std;
 
+void Semicolon_Comma_filter(string &);
  /**************************************************** 
   The instruction strctures 
   R-type:  
@@ -81,17 +84,39 @@ string reg_lookup(string & st)
      {
       string tmp = strBin.substr(i * 4, i * 4 + 4);
       int tmpint = (tmp[0] - '0') * 8 + (tmp[1] - '0') * 4 + (tmp[2] - '0') * 2 + (tmp[3] - '0') * 1;
-      strHex += tmpint >= 10 ? tmpint - 10 + 'a' : tmpint + '0';
+      strHex += tmpint >= 10 ? tmpint - 10 + 'A' : tmpint + '0';
      }
      return strHex;
  }
 
- string DectoBin(const string &strDec)
+ string DectoBin(const string &strDec, bool _26 = false)
  {
     string strBin;
-    bitset<16> t;
-    t = atoi(strDec.c_str());
-    strBin = t.to_string();
+    unsigned int tmp;
+    if (!_26)
+    {
+      bitset<16> t;
+      if (strDec.substr(0, 2) != "0x")
+        t = atoi(strDec.c_str());
+      else
+      {
+        sscanf(strDec.c_str(), "%x", &tmp);
+        t = tmp;
+      }
+      strBin = t.to_string();
+    }
+    else
+    {
+      bitset<26> t;
+      if (strDec.substr(0, 2) != "0x")
+        t = atoi(strDec.c_str());
+      else
+      {
+        sscanf(strDec.c_str(), "%x", &tmp);
+        t = tmp;
+      }
+      strBin = t.to_string();
+    }
     return strBin;
  }
 
@@ -101,9 +126,9 @@ string Handle_Instruction_R(string instruction)
 	string opt, rs, rt, rd;
 	stringstream is(instruction);
 	is >> opt >> rd >> rs >> rt;
-	rs = rs.substr(0, rs.size() - 1);
-	rt = rt.substr(0, rt.size() - 1);
-	rd = rd.substr(0, rd.size() - 1);
+	Semicolon_Comma_filter(rs);
+	Semicolon_Comma_filter(rt);
+	Semicolon_Comma_filter(rd);
   if (opt == "add") 
     code = "000000" + reg_lookup(rs) + reg_lookup(rt) + reg_lookup(rd) + "00000" + "100000";
   else if (opt == "addu")
@@ -133,9 +158,10 @@ string Handle_Instruction_I(string instruction, int pc, map<string, int> Labels)
   string opt, rs, rt, imm;
   stringstream is(instruction);
   is >> opt >> rt >> rs >> imm;
-  rs = rs.substr(0, rs.size() - 1);
-  rt = rt.substr(0, rt.size() - 1);
-  imm = imm.substr(0, imm.size() - 1);
+  Semicolon_Comma_filter(opt);
+  Semicolon_Comma_filter(rt);
+  Semicolon_Comma_filter(rs);
+  Semicolon_Comma_filter(imm);
   /*alu   immediate */
   if (opt == "addi")
     code = "001000" + reg_lookup(rs) + reg_lookup(rt) + DectoBin(imm);
@@ -154,9 +180,9 @@ string Handle_Instruction_I(string instruction, int pc, map<string, int> Labels)
   else if (opt == "lui")
     code = "00111100000" + reg_lookup(rt) + DectoBin(rs);
   else if (opt == "beq")
-    code = "000100" + reg_lookup(rs) + reg_lookup(rt) + (Labels.find(imm) == Labels.end() ? DectoBin(imm) : DectoBin(to_string(Labels[imm] - pc - 4)) );
+    code = "000100" + reg_lookup(rt) + reg_lookup(rs) + (Labels.find(imm) == Labels.end() ? DectoBin(imm) : DectoBin(to_string((Labels[imm] - pc - 4) >> 2)) );
   else if (opt == "bne")
-    code = "000101" + reg_lookup(rs) + reg_lookup(rt) + (Labels.find(imm) == Labels.end() ? DectoBin(imm) : DectoBin(to_string(Labels[imm] - pc - 4)) );
+    code = "000101" + reg_lookup(rt) + reg_lookup(rs) + (Labels.find(imm) == Labels.end() ? DectoBin(imm) : DectoBin(to_string((Labels[imm] - pc - 4) >> 2)) );
   else if (opt == "blez")
     code = "000110" + reg_lookup(rt) + "00000" + (Labels.find(rt) == Labels.end() ? DectoBin(rt) : DectoBin(to_string(Labels[rt] - pc - 4)) );
   else if (opt == "bgtz")
@@ -185,20 +211,22 @@ string Handle_Instruction_I(string instruction, int pc, map<string, int> Labels)
 
 string Handle_Instruction_J(string instruction, int pc, map<string, int> Labels)
 {
-  string code;
-  string opt, target;
+  string code, opt, target;
   stringstream is(instruction);
+
   is >> opt >> target;
-  opt = opt.substr(0, opt.size() - 1);
-  target = target.substr(0, target.size() - 1);
+  Semicolon_Comma_filter(opt);
+  Semicolon_Comma_filter(target);
+
   if (opt == "jr")
     code = "000000" + reg_lookup(target) + "000000000000000001000" ;
   else if (opt == "j")
-    code = "000010" + DectoBin(to_string(Labels[target] >> 2));
+    code = "000010" + DectoBin(to_string(Labels[target] >> 2), true);
   else if (opt == "jal")
-    code = "000011" + DectoBin(to_string(Labels[target] >> 2));
+    code = "000011" + DectoBin(to_string(Labels[target] >> 2), true);
   else if (opt == "jalr")
     code = "000000" + reg_lookup(target) + "000000000000000001000" ;
+
   return code;
 }
 
@@ -235,29 +263,38 @@ int gettype(const string &s)
   {
     if (s[it] == '$') dollar ++;
   }
-  if (dollar == 0) return J_type;
+  if (dollar == 0 || s.substr(0, 2) == "jr" || s.substr(0, 4) == "jalr") return J_type;
   else if (dollar == 3) return R_type;
   else return I_type;
 }
 
-void String_space_filter(string &s)
+void Semicolon_Comma_filter(string &s)
 {
   int index = 0;
   if (!s.empty())
   {
-      while( (index = s.find(' ', index)) != string::npos)
+      while( (index = s.find(';', index)) != string::npos)
       {
-          s.erase(index, 1);
+        s.erase(index, 1);
+      }
+  }
+  index = 0;
+  if (!s.empty())
+  {
+      while( (index = s.find(',', index)) != string::npos)
+      {
+        s.erase(index, 1);
       }
   }
 }
+
 
 
 int main(int argc, char** argv)
 {
   vector<string> Instructions;
   map<string, int> Labels;
-  int instruction_i, label_i, pc, initial_pc;
+  int instruction_i, label_i, pc = 0, initial_pc = 0;
   string label;
   if (argc != 3)
   {
@@ -292,27 +329,27 @@ int main(int argc, char** argv)
 	Instructions.push_back(buffer);
     pc += 4;
   }
+    pc = initial_pc;
   for (vector<string>::iterator iter = Instructions.begin(); iter != Instructions.end(); ++ iter)
 	{
-    pc = initial_pc;
 		Instruction_type type;
 		string Machine_code;
 		type = gettype(*iter);
 		switch(type)
 		{
 			case (J_type): {
-        Machine_code = Handle_Instruction_I(*iter, pc, Labels); 
-        cout << BinToHex(Machine_code) << endl;
+        Machine_code = Handle_Instruction_J(*iter, pc, Labels); 
+        outFile << BinToHex(Machine_code) << endl;
         break;
       }
 			case (I_type): {
         Machine_code = Handle_Instruction_I(*iter, pc, Labels); 
-        cout << BinToHex(Machine_code) << endl;
+        outFile << BinToHex(Machine_code) << endl;
         break;
       }
 			case (R_type): {
           Machine_code = Handle_Instruction_R(*iter); 
-          cout << BinToHex(Machine_code) << endl;
+          outFile << BinToHex(Machine_code) << endl;
           break;
       }
 			default : break;
