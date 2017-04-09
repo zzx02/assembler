@@ -225,7 +225,7 @@ string Handle_Instruction_J(string instruction, int pc, map<string, int> Labels)
   else if (opt == "jal")
     code = "000011" + DectoBin(to_string(Labels[target] >> 2), true);
   else if (opt == "jalr")
-    code = "000000" + reg_lookup(target) + "000000000000000001000" ;
+    code = "000000" + reg_lookup(target) + "000000000000000001001" ;
 
   return code;
 }

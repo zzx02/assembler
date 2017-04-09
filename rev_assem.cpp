@@ -7,16 +7,10 @@
 #include <sstream>
 #include <cstdio>
 
-#define Instruction_type int
-
-#define EMPTY_type 0x00
-#define J_type 0x01
-#define I_type 0x02
-#define R_type 0x03
-
 using namespace std;
 
 void Semicolon_Comma_filter(string &);
+string reg_lookup(string );
  /**************************************************** 
   The instruction strctures 
   R-type:  
@@ -39,7 +33,7 @@ void Semicolon_Comma_filter(string &);
      +------------------------------------------------+ 
  */  
 
-string reg_lookup(string & st)
+string reg_lookup(string  st)
 {
 	string Num;
   if (st == "00000") Num = "$zero";
@@ -76,19 +70,58 @@ string reg_lookup(string & st)
   else if (st == "11111") Num = "$ra";       
   return Num ;    
 }
+ string BinToHex(const string &strBin)
+ {
+     string strHex = "";
+     for (int i = 0; i < strBin.size() / 4;  ++ i)
+     {
+      string tmp = strBin.substr(i * 4, i * 4 + 4);
+      int tmpint = (tmp[0] - '0') * 8 + (tmp[1] - '0') * 4 + (tmp[2] - '0') * 2 + (tmp[3] - '0') * 1;
+      strHex += tmpint >= 10 ? tmpint - 10 + 'A' : tmpint + '0';
+     }
+     return strHex;
+ }
+
+int BinToDec(const string &strBin)
+{
+  int _2 = 0, tot = 0;
+  int tmp = strBin.length() - 1;
+  _2 = 1;
+  if (strBin[0] == '0')
+  {
+  while (tmp > 0)
+  {
+    tot += (strBin[tmp --] - '0') * _2;
+    _2 *= 2; 
+  }
+  return tot;
+  }
+  else
+  {
+    while (tmp > 0)
+    {
+      tot += (strBin[tmp -- ] == '1' ? 0: 1) * _2;
+      _2 *= 2;
+    }
+    return -(tot + 1);
+  }
+}
+
 
  string HexToBin(const string &strHex)
  {
-    for (int i = 0; i < 7;  ++ i)
+    string ReturnStr = "";
+    for (int i = 0; i < 8;  ++ i)
      {
       string strBin = "";
-      int tmp = strHex[i] - '0' > 10 ? strHex[i] - 'A' : strHex[i] - '0';
+      int tmp = strHex[i] - '0' > 10 ? strHex[i] - 'A' + 10 : strHex[i] - '0';
       if (tmp / 8) strBin += "1"; else strBin += "0"; tmp %= 8;
       if (tmp / 4) strBin += "1"; else strBin += "0"; tmp %= 4;
       if (tmp / 2) strBin += "1"; else strBin += "0"; tmp %= 2;
       if (tmp / 1) strBin += "1"; else strBin += "0"; tmp %= 1;
+      ReturnStr += strBin;
      }
-     return strBin;
+     return ReturnStr;
  }
 
  string DectoBin(const string &strDec, bool _26 = false)
@@ -139,17 +172,99 @@ int getlabel(string &s, string &label)
 
 }
 
-int gettype(const string &s)
+string Handle_MachineCode(string & machine, map<int, string> Labels, int pc)
 {
-  int dollar = 0;
-  if (s == "" || s.find('#') != string::npos) return EMPTY_type;
-  for (int it = 0; it != s.size(); it ++)
+  string assem;
+  string opcode = machine.substr(0, 6), shamt = machine.substr(21, 5), funct = machine.substr(26, 6);
+  if (opcode == "000000")
   {
-    if (s[it] == '$') dollar ++;
+    if (funct == "100000" && shamt == "00000")
+      assem = "add " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100001" && shamt == "00000")
+      assem = "addu " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100010" && shamt == "00000") 
+      assem = "sub " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100011" && shamt == "00000") 
+      assem = "subu " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "101010" && shamt == "00000") 
+      assem = "slt " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "101011" && shamt == "00000") 
+      assem = "sltu " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100100" && shamt == "00000") 
+      assem = "and " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100101" && shamt == "00000") 
+      assem = "or " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100110" && shamt == "00000") 
+      assem = "xor " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else  if (funct == "100111" && shamt == "00000") 
+      assem = "nor " + reg_lookup(machine.substr(16, 5)) +  ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + reg_lookup(machine.substr(11, 5));
+    else if (funct == "001000")
+      assem = "jr " + reg_lookup(machine.substr(6, 5));
+    else if (funct == "001001")
+      assem = "jalr " + reg_lookup(machine.substr(6, 5));
   }
-  if (dollar == 0 || s.substr(0, 2) == "jr" || s.substr(0, 4) == "jalr") return J_type;
-  else if (dollar == 3) return R_type;
-  else return I_type;
+  else if (opcode == "001000")
+      assem = "addi " + reg_lookup(machine.substr(11, 5)) + ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16)));
+  else if (opcode == "001001")
+      assem = "addu " + reg_lookup(machine.substr(11, 5)) + ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16)));
+  else if (opcode == "001101")
+      assem = "ori " + reg_lookup(machine.substr(11, 5)) + ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16)));
+  else if (opcode == "001100")
+      assem = "xori " + reg_lookup(machine.substr(11, 5)) + ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16)));
+  else if (opcode == "001010")
+      assem = "slti " + reg_lookup(machine.substr(11, 5)) + ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16)));
+  else if (opcode == "001101")
+      assem = "sltiu " + reg_lookup(machine.substr(11, 5)) + ", " + 
+              reg_lookup(machine.substr(6, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16)));
+  else if (opcode == "001111")
+      assem = "lui " + reg_lookup(machine.substr(11, 5)) + ", " + "0x" + BinToHex(machine.substr(16, 16));
+  else if (opcode == "000100")
+      assem = "beq " + reg_lookup(machine.substr(6, 5)) + ", " + 
+              reg_lookup(machine.substr(11, 5)) + ", " + Labels[(BinToDec(machine.substr(16, 16)) << 2) + pc + 4];
+  else if (opcode == "000101")
+      assem = "bne " + reg_lookup(machine.substr(6, 5)) + ", " + 
+              reg_lookup(machine.substr(11, 5)) + ", " + Labels[(BinToDec(machine.substr(16, 16)) << 2) + pc + 4];
+  else if (opcode == "000110")
+      assem = "blez " + reg_lookup(machine.substr(6, 5)) + " " + 
+              Labels[BinToDec(machine.substr(16, 16)) << 2];
+  else if (opcode == "000111")
+      assem = "bgtz " + reg_lookup(machine.substr(6, 5)) + " " + 
+              Labels[BinToDec(machine.substr(16, 16)) << 2];
+  else if (opcode == "000110" && machine.substr(11, 5) == "00000")
+      assem = "bltz " + reg_lookup(machine.substr(6, 5)) + " " + 
+              Labels[BinToDec(machine.substr(16, 16)) << 2];      
+  else if (opcode == "000110" && machine.substr(11, 5) == "10001")
+      assem = "bgez " + reg_lookup(machine.substr(6, 5)) + " " + 
+              Labels[BinToDec(machine.substr(16, 16)) << 2];
+  else if (opcode == "100011")
+      assem = "lw " + reg_lookup(machine.substr(11, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16))) + "(" 
+              + reg_lookup(machine.substr(6, 5)) + ")";
+  else if (opcode == "101011")
+      assem = "sw " + reg_lookup(machine.substr(11, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16))) + "(" 
+              + reg_lookup(machine.substr(6, 5)) + ")";
+  else if (opcode == "100000")
+      assem = "lb " + reg_lookup(machine.substr(11, 5)) + ", " + to_string(BinToDec(machine.substr(16, 16))) + "(" 
+              + reg_lookup(machine.substr(6, 5)) + ")"; 
+  else if (opcode == "000010")
+      assem = "j " +  Labels[BinToDec(machine.substr(6, 26)) << 2];
+  else if (opcode == "000011")
+      assem = "jal " +  Labels[BinToDec(machine.substr(6, 26)) << 2];         
+  return assem;
 }
 
 void Semicolon_Comma_filter(string &s)
@@ -173,12 +288,11 @@ void Semicolon_Comma_filter(string &s)
 }
 
 
-
 int main(int argc, char** argv)
 {
   vector<string> Instructions;
-  map<string, int> Labels;
-  int instruction_i, label_i, pc = 0, initial_pc = 0;
+  map<int, string> Labels;
+  int instruction_i, label_i = 0, pc = 0, initial_pc = 0;
   string label;
   if (argc != 3)
   {
@@ -195,49 +309,41 @@ int main(int argc, char** argv)
       cout << "Can't open " << argv[2] << ", Try again" << endl;
     return -1;
   }
-/* Scan the whole .asm file, generate the instructions and the label tables; */
+/* Scan the whole .bin file, generate the instructions and the label tables; */
   while (!inFile.eof())
   {
-    string buffer, macro = "";
-    Instruction_type type;
+    string buffer;
     getline(inFile, buffer);
-    if (getmacro(buffer)) {
-        stringstream is(buffer);
-        string temp;
-        int p;
-        is >> temp >> p;
-        pc = initial_pc = p;
-    }
-    if (getlabel(buffer, label)) Labels.insert(pair<string,int>(label, pc));
-    if ((type = gettype(buffer)) == EMPTY_type) continue;
-	Instructions.push_back(buffer);
+    buffer = HexToBin(buffer);
+    Semicolon_Comma_filter(buffer);
+    if (buffer.substr(0, 6) == "000100" || buffer.substr(0, 6) == "000101" ||
+          buffer.substr(0, 6) == "000110" || buffer.substr(0, 6) == "000111" || buffer.substr(0, 6) == "000001"
+          || buffer.substr(0, 6) == "000010" || buffer.substr(0, 6) == "000011")
+      {
+        if ((buffer.substr(0, 6) == "000010" || buffer.substr(0, 6) == "000011" ) && 
+              Labels.find(BinToDec(buffer.substr(6, 26)) * 4) == Labels.end())
+        {
+            label_i ++ ;
+            Labels.insert(pair<int,string>(BinToDec(buffer.substr(6, 26)) * 4, "label" + to_string(label_i)));
+        }
+        else if ((buffer.substr(0, 6) != "000010" && buffer.substr(0, 6) != "000011" ) &&
+                    Labels.find(BinToDec(buffer.substr(6, 26)) * 4 + pc + 4) == Labels.end())
+        {
+            label_i ++ ;
+            Labels.insert(pair<int,string>(pc + 4 + (BinToDec(buffer.substr(16, 16)) * 4), "label" + to_string(label_i)));
+        }
+      }
+    Instructions.push_back(buffer);
     pc += 4;
   }
     pc = initial_pc;
   for (vector<string>::iterator iter = Instructions.begin(); iter != Instructions.end(); ++ iter)
 	{
-		Instruction_type type;
-		string Machine_code;
-		type = gettype(*iter);
-		switch(type)
-		{
-			case (J_type): {
-        Machine_code = Handle_Instruction_J(*iter, pc, Labels); 
-        outFile << BinToHex(Machine_code) << endl;
-        break;
-      }
-			case (I_type): {
-        Machine_code = Handle_Instruction_I(*iter, pc, Labels); 
-        outFile << BinToHex(Machine_code) << endl;
-        break;
-      }
-			case (R_type): {
-          Machine_code = Handle_Instruction_R(*iter); 
-          outFile << BinToHex(Machine_code) << endl;
-          break;
-      }
-			default : break;
-		}
+    string assemcode;
+    assemcode = Handle_MachineCode(*iter, Labels, pc);
+    if (Labels.find(pc) != Labels.end()) outFile << Labels[pc] << ":" << endl;
+    outFile << assemcode << endl;
     pc += 4;
 	}
 }
+
